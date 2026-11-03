@@ -50,7 +50,7 @@ if student_question:
     with st.spinner("⚡ Mr. Edison is drafting a response from Menlo Park..."):
         try:
             response = client.models.generate_content(
-                model='gemini-2.5-flash',
+                model='gemini-3.8-flash',
                 contents=formatted_prompt
             )
             st.write(f"### 🤖 Thomas Edison Replies:")
