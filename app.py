@@ -21,19 +21,25 @@ if "messages" not in st.session_state:
         {"role": "assistant", "content": "Greetings. I am Thomas Alva Edison. Ask me anything about my work at Menlo Park, my patents, or my view on innovation."}
     ]
 
-# Display past messages
+# 4. Display Past Messages Using Standard Text Containers (Bypasses Glitchy Chat Bubbles)
 for msg in st.session_state.messages:
-    with st.chat_message(msg["role"]):
-        st.write(msg["content"])
+    if msg["role"] == "assistant":
+        st.markdown(f"**🤖 Thomas Edison:** {msg['content']}")
+    else:
+        st.markdown(f"**👤 Student:** {msg['content']}")
+st.write("---")
 
-# 4. Handle Student Input
-if user_query := st.chat_input("Ask Mr. Edison a question..."):
-    # Show student's question immediately
-    with st.chat_message("user"):
-        st.write(user_query)
+# 5. Fallback Input Form (Bypasses Broken st.chat_input script completely)
+with st.form(key="edison_input_form", clear_on_submit=True):
+    user_query = st.text_input("Type your question for Mr. Edison here and press 'Submit':", placeholder="e.g., How did you invent the lightbulb?")
+    submit_button = st.form_submit_with_repricator = st.form_submit_button(label="Submit Question")
+
+# 6. Handle Input Processing
+if submit_button and user_query.strip():
+    # Save the query
     st.session_state.messages.append({"role": "user", "content": user_query})
-
-    # Historical context prompt for the AI
+    
+    # Historical context instruction setup
     system_instruction = (
         "You are acting as the historical figure Thomas Edison. Speak in the first person ('I'). "
         "Your tone must be high-school appropriate, educational, professional, yet determined and sharp. "
@@ -46,24 +52,21 @@ if user_query := st.chat_input("Ask Mr. Edison a question..."):
         "'Diary entry, July 1885', or 'The Papers of Thomas A. Edison, Rutgers University')."
     )
 
-    # Convert past messages into standard text format for the API to avoid version crashes
+    # Format transcript history into raw string block
     formatted_prompt = f"{system_instruction}\n\n"
     for msg in st.session_state.messages:
         speaker = "Edison" if msg["role"] == "assistant" else "Student"
         formatted_prompt += f"{speaker}: {msg['content']}\n"
     formatted_prompt += "Edison:"
 
-    # Call Gemini model
-    with st.chat_message("assistant"):
-        with st.spinner("Mr. Edison is writing..."):
-            try:
-                response = client.models.generate_content(
-                    model='gemini-2.5-flash',
-                    contents=formatted_prompt
-                )
-                answer = response.text
-                st.write(answer)
-                st.session_state.messages.append({"role": "assistant", "content": answer})
-                st.rerun()  # Refresh screen to update chat log cleanly
-            except Exception as e:
-                st.error(f"Error generating response: {e}")
+    with st.spinner("Mr. Edison is writing a reply..."):
+        try:
+            response = client.models.generate_content(
+                model='gemini-2.5-flash',
+                contents=formatted_prompt
+            )
+            answer = response.text
+            st.session_state.messages.append({"role": "assistant", "content": answer})
+            st.rerun()
+        except Exception as e:
+            st.error(f"AI Connection Error: {e}")
