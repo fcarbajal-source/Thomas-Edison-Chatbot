@@ -108,7 +108,7 @@ if user_prompt := st.chat_input("Ask Mr. Edison a question..."):
                     contents=contents,
                     config=types.GenerateContentConfig(
                         system_instruction=EDISON_SYSTEM_INSTRUCTION,
-                        temperature=0.6,
+                        temperature=0.3,
                         max_output_tokens=150,  # Enforces brief 15-95 word length
                     ),
                 )
