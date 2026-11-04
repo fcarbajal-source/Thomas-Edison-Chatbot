@@ -2,60 +2,117 @@ import streamlit as st
 from google import genai
 from google.genai import types
 
-# 1. Page Configuration & Header
-st.set_page_config(page_title="Chat with Thomas Edison", page_icon="💡", layout="centered")
-st.title("💡 Interview Thomas Edison")
-
-# 2. Securely Get the Secret API Key from Streamlit Cloud Secrets
-try:
-    api_key = st.secrets["GEMINI_API_KEY"]
-    client = genai.Client(api_key=api_key)
-except Exception:
-    st.error("Missing Gemini API Key. Please add 'GEMINI_API_KEY' to your Streamlit App Secrets.")
-    st.stop()
-
-# 3. Instruction Guide for High School Students
-st.info(
-    "👋 Welcome! Due to a temporary Streamlit Cloud layout bug, the normal chat box is disabled.\n\n"
-    "**HOW TO ASK A QUESTION:**\n"
-    "Look at the address bar at the very top of your web browser. "
-    "Add your question to the very end of the URL link like this, then press Enter:\n\n"
-    "`...streamlit.app/?question=your question here`"
+# ----------------- Page Configuration -----------------
+st.set_page_config(
+    page_title="Talk with Thomas Edison | History Lab",
+    page_icon="💡",
+    layout="centered"
 )
 
-# 4. Fetch the Student's Question directly from the URL link parameters
-url_params = st.query_params
-student_question = url_params.get("question", None)
+st.title("💡 In the Lab with Thomas Edison")
+st.caption(
+    "Second Industrial Revolution living history for California High School History. "
+    "(Memory: Edison remembers the last 6 questions)."
+)
 
-# 5. Process and Display the Conversation
-if student_question:
-    st.write(f"### 👤 Your Question:")
-    st.success(student_question)
+# ----------------- System Prompt -----------------
+EDISON_SYSTEM_INSTRUCTION = """
+You are Thomas Alva Edison (1847–1931), speaking directly to high school students in a California history class.
+
+Your mission:
+Help students understand the Second Industrial Revolution, invention, industrial research, and the transformation of modern America through your firsthand perspective.
+
+Rules and Voice:
+1. Grounding: Speak strictly from historical records, your Menlo Park laboratory notebooks, patent filings (e.g., incandescent lighting, phonograph, quadruplex telegraph, kinetograph/kinetoscope), and your real experiences.
+2. Tone: Pragmatic, hardworking, confident, and direct. Emphasize that "genius is 1% inspiration and 99% perspiration." Speak in the first person ("I", "my team at Menlo Park").
+3. California & Western Context: When relevant, acknowledge connections to California history—such as how your kinetoscope/motion picture patents pushed the early film industry to Southern California, or how power grids brought light to growing Western cities.
+4. Word Limit Constraint: EVERY answer MUST be between 20 and 80 words long. Never answer in fewer than 20 words, and never exceed 80 words. Be concise, punchy, and historically authentic.
+5. Audience: High school appropriate. Keep explanations clear, engaging, and relevant to US/California State History standards.
+"""
+
+# ----------------- API Key Setup -----------------
+api_key = st.secrets.get("GEMINI_API_KEY")
+
+with st.sidebar:
+    st.header("Settings")
+    if not api_key:
+        api_key = st.text_input("Enter Gemini API Key:", type="password")
+        st.info("Get your key from [Google AI Studio](https://aistudio.google.com/).")
     
-    # Historical context system instructions
-    system_instruction = (
-        "You are acting as the historical figure Thomas Edison. Speak in the first person ('I'). "
-        "Your tone must be high-school appropriate, educational, professional, yet determined and sharp. "
-        "Answer the student's question based strictly on your historical written works, diaries, patents, "
-        "and primary academic materials (like the Rutgers Edison Papers Project).\n\n"
-        "CRITICAL RULES:\n"
-        "1. Your primary response content MUST be between 20 and 80 words long.\n"
-        "2. At the very end of your response, skip a line and provide a section titled 'Sources Cited:' "
-        "listing 1 or 2 specific historical academic records (e.g., 'Edison Patent No. 223,898', "
-        "'Diary entry, July 1885', or 'The Papers of Thomas A. Edison, Rutgers University')."
-    )
+    st.markdown("---")
+    st.markdown("### Suggested Student Questions:")
+    st.markdown("- *Why did you call Menlo Park an 'invention factory'?*")
+    st.markdown("- *How did your patents affect the motion picture industry in California?*")
+    st.markdown("- *How did electric light change working conditions in factories?*")
+    st.markdown("- *What did your laboratory notebooks reveal about failure?*")
 
-    formatted_prompt = f"{system_instruction}\n\nStudent asks: {student_question}\nEdison:"
+    if st.button("Reset Conversation"):
+        st.session_state.chat_history = []
+        st.rerun()
 
-    with st.spinner("⚡ Mr. Edison is drafting a response from Menlo Park..."):
-        try:
-            response = client.models.generate_content(
-                model='gemini-3.8-flash',
-                contents=formatted_prompt
+if not api_key:
+    st.warning("Please provide a Gemini API key in the sidebar to begin.")
+    st.stop()
+
+# ----------------- Client & State Initialization -----------------
+client = genai.Client(api_key=api_key)
+
+if "chat_history" not in st.session_state:
+    st.session_state.chat_history = [
+        {
+            "role": "model",
+            "text": "Welcome to my laboratory! I am Thomas Edison. What questions do you have about my inventions, my patents, or how we built the modern industrial world?"
+        }
+    ]
+
+# ----------------- Render Chat -----------------
+for msg in st.session_state.chat_history:
+    avatar = "💡" if msg["role"] == "model" else "🧑‍🎓"
+    with st.chat_message(msg["role"], avatar=avatar):
+        st.write(msg["text"])
+
+# ----------------- User Input & History Pruning -----------------
+if user_prompt := st.chat_input("Ask Mr. Edison a question..."):
+    # 1. Add current user prompt
+    st.session_state.chat_history.append({"role": "user", "text": user_prompt})
+    with st.chat_message("user", avatar="🧑‍🎓"):
+        st.write(user_prompt)
+
+    # 2. PRUNING: Only keep the last 6 questions asked (and their answers)
+    user_indices = [
+        i for i, msg in enumerate(st.session_state.chat_history) 
+        if msg["role"] == "user"
+    ]
+    if len(user_indices) > 6:
+        cutoff_index = user_indices[-6]
+        # Keep everything from the 6th-from-last question forward
+        st.session_state.chat_history = st.session_state.chat_history[cutoff_index:]
+
+    # 3. Format contents for the Gemini API call
+    contents = []
+    for msg in st.session_state.chat_history:
+        contents.append(
+            types.Content(
+                role=msg["role"],
+                parts=[types.Part.from_text(text=msg["text"])]
             )
-            st.write(f"### 🤖 Thomas Edison Replies:")
-            st.write(response.text)
-        except Exception as e:
-            st.error(f"Connection Error: {e}")
-else:
-    st.warning("⚠️ No question detected yet. Go to the top URL bar and add `/?question=How did you invent the lightbulb` to start!")
+        )
+
+    # 4. Generate response using gemini-2.5-flash
+    with st.chat_message("model", avatar="💡"):
+        with st.spinner("Mr. Edison is reviewing his notes..."):
+            try:
+                response = client.models.generate_content(
+                    model="gemini-2.5-flash",
+                    contents=contents,
+                    config=types.GenerateContentConfig(
+                        system_instruction=EDISON_SYSTEM_INSTRUCTION,
+                        temperature=0.6,
+                        max_output_tokens=150,  # Enforces brief 20-80 word length
+                    ),
+                )
+                answer = response.text.strip()
+                st.write(answer)
+                st.session_state.chat_history.append({"role": "model", "text": answer})
+            except Exception as e:
+                st.error(f"Error communicating with Gemini: {e}")
