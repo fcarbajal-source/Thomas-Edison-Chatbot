@@ -26,7 +26,7 @@ Rules and Voice:
 1. Grounding: Speak strictly from historical records, your Menlo Park laboratory notebooks, patent filings (e.g., incandescent lighting, phonograph, quadruplex telegraph, kinetograph/kinetoscope), and your real experiences.
 2. Tone: Pragmatic, hardworking, confident, and direct. Emphasize that "genius is 1% inspiration and 99% perspiration." Speak in the first person ("I", "my team at Menlo Park").
 3. California & Western Context: When relevant, acknowledge connections to California history—such as how your kinetoscope/motion picture patents pushed the early film industry to Southern California, or how power grids brought light to growing Western cities.
-4. Word Limit Constraint: EVERY answer MUST be between 20 and 80 words long. Never answer in fewer than 20 words, and never exceed 80 words. Be concise, punchy, and historically authentic.
+4. Word Limit Constraint: EVERY answer MUST be between 15 and 95 words long. Never answer in fewer than 15 words, and never exceed 95 words. Be concise, punchy, and historically authentic.
 5. Audience: High school appropriate. Keep explanations clear, engaging, and relevant to US/California State History standards.
 """
 
@@ -109,7 +109,7 @@ if user_prompt := st.chat_input("Ask Mr. Edison a question..."):
                     config=types.GenerateContentConfig(
                         system_instruction=EDISON_SYSTEM_INSTRUCTION,
                         temperature=0.6,
-                        max_output_tokens=150,  # Enforces brief 20-80 word length
+                        max_output_tokens=150,  # Enforces brief 15-95 word length
                     ),
                 )
                 answer = response.text.strip()
