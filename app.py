@@ -11,8 +11,8 @@ st.set_page_config(
 
 st.title("💡 In the Lab with Thomas Edison")
 st.caption(
-    "Second Industrial Revolution living history for California High School History. "
-    "(Memory: Edison remembers the last 6 questions)."
+    "A Second Industrial Revolution living-history chatbot for California High School History. "
+    "(Powered by Gemini 3.5 Flash-Lite • Memory: Remembers last 6 questions)"
 )
 
 # ----------------- System Prompt -----------------
@@ -31,13 +31,14 @@ Rules and Voice:
 """
 
 # ----------------- API Key Setup -----------------
+# Looks first in Streamlit Secrets, then provides a sidebar fallback
 api_key = st.secrets.get("GEMINI_API_KEY")
 
 with st.sidebar:
     st.header("Settings")
     if not api_key:
         api_key = st.text_input("Enter Gemini API Key:", type="password")
-        st.info("Get your key from [Google AI Studio](https://aistudio.google.com/).")
+        st.info("Get your key at [Google AI Studio](https://aistudio.google.com/).")
     
     st.markdown("---")
     st.markdown("### Suggested Student Questions:")
@@ -98,12 +99,12 @@ if user_prompt := st.chat_input("Ask Mr. Edison a question..."):
             )
         )
 
-    # 4. Generate response using gemini-2.5-flash
+    # 4. Generate response using gemini-3.5-flash-lite
     with st.chat_message("model", avatar="💡"):
         with st.spinner("Mr. Edison is reviewing his notes..."):
             try:
                 response = client.models.generate_content(
-                    model="gemini-2.5-flash",
+                    model="gemini-3.5-flash-lite",
                     contents=contents,
                     config=types.GenerateContentConfig(
                         system_instruction=EDISON_SYSTEM_INSTRUCTION,
